@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 """
-binaryburger-cronmanager-nagios.py: Nagios plugin to monitor servers executing tasks managed by the BinaryBurger CronManager
+binaryburger-cronograph-nagios.py: Nagios plugin to monitor servers executing tasks managed by the BinaryBurger Cron-o-graph
 
 Author: Jens Nistler <loci@binaryburger.com>
 License: GPL
@@ -18,8 +18,8 @@ EXIT_CRIT = 2
 EXIT_UNKNOWN = 3
 
 
-class cronmanager_check:
-	uri = "http://www.binaryburger.com/cronmanager/api/status"
+class cronograph_check:
+	uri = "http://www.binaryburger.com/cronograph/api/status"
 	message = False
 
 	def addMessage(self, message):
@@ -42,18 +42,18 @@ class cronmanager_check:
 		"""
 
 		parser = argparse.ArgumentParser(
-			description="BinaryBurger CronManager Nagios plugin"
+			description="BinaryBurger Cron-o-graph Nagios plugin"
 		)
 		parser.add_argument(
 			"--server",
 			dest="Server",
-			help="The server name as shown on the CronManager web interface",
+			help="The server name as shown on the Cron-o-graph web interface",
 			required=True
 		)
 		parser.add_argument(
 			"--secret",
 			dest="Secret",
-			help="The server secret as shown on the CronManager web interface",
+			help="The server secret as shown on the Cron-o-graph web interface",
 			required=True
 		)
 		args = parser.parse_args()
@@ -78,8 +78,6 @@ class cronmanager_check:
 			self.exit(EXIT_WARN)
 		except IOError, e:
 			self.addMessage("API request failed")
-			if hasattr(e, "message") and e.message.strip():
-				self.addMessage(e.message.strip())
 			if hasattr(e, "code") and e.code != 0:
 				self.addMessage("error code " + str(e.code))
 			self.exit(EXIT_WARN)
@@ -94,5 +92,5 @@ class cronmanager_check:
 
 # run the check
 if __name__ == "__main__":
-	check = cronmanager_check()
+	check = cronograph_check()
 	check.check()
