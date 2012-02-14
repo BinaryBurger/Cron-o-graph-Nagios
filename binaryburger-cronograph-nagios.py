@@ -19,20 +19,13 @@ EXIT_UNKNOWN = 3
 
 
 class cronograph_check:
-	uri = "http://www.binaryburger.com/cronograph/api/status"
+	uri = "http://www.binaryburger.com/cronograph/api/"
 	message = False
 
-	def addMessage(self, message):
-		"""Add message
-		"""
+	def _set_message(self, message):
+		self.message = message
 
-		if self.message:
-			self.message += ", "
-			self.message += message
-		else:
-			self.message = message
-
-	def exit(self, status):
+	def _exit(self, status):
 		if self.message:
 			print self.message
 		sys.exit(status)
@@ -56,9 +49,19 @@ class cronograph_check:
 			help="The server secret as shown on the Cron-o-graph web interface",
 			required=True
 		)
+		parser.add_argument(
+			"--api",
+			dest="API",
+			help="Set different API URI",
+			required=False,
+			default="http://www.binaryburger.com/cronograph/api/"
+		)
 		args = parser.parse_args()
 
-		request = urllib2.Request(self.uri)
+		if args.API:
+			self.uri = args.API
+
+		request = urllib2.Request(self.uri + "status")
 		request.add_header("Authorization", "Basic %s" % base64.encodestring("%s:%s" % (args.Server, args.Secret))[:-1])
 
 		try:
@@ -66,29 +69,33 @@ class cronograph_check:
 			response_json = json.loads(response_handle.read())
 
 			# check response
-			if not response_json["status"]:
-				raise ValueError("Missing status in response")
+			if not response_json["status"] or response_json["status"] not in [EXIT_OK, EXIT_WARN, EXIT_CRIT]:
+				self._set_message("API response did not contain a status code")
+				self._exit(EXIT_UNKNOWN)
 
+			# set status message
 			if response_json["message"]:
-				self.addMessage(response_json["message"])
-			if response_json["status"] == "OK":
-				self.exit(EXIT_OK)
-			elif response_json["status"] == "ERROR":
-				self.exit(EXIT_CRIT)
-			self.exit(EXIT_WARN)
-		except IOError, e:
-			self.addMessage("API request failed")
-			if hasattr(e, "code") and e.code != 0:
-				self.addMessage("error code " + str(e.code))
-			self.exit(EXIT_WARN)
-		except ValueError, e:
-			self.addMessage("Failed to decode API response")
-			if hasattr(e, "message") and e.message.strip():
-				self.addMessage(e.message.strip())
-			self.exit(EXIT_WARN)
+				self._set_message(response_json["message"])
 
-		self.addMessage("An unexpected error happened")
-		self.exit(EXIT_UNKNOWN)
+			self._exit(response_json["status"])
+		except IOError, e:
+			message = "API request failed"
+			if hasattr(e, "code") and e.code != 0:
+				message += " (error code " + str(e.code) + ")"
+
+			self._set_message(message)
+			self._exit(EXIT_UNKNOWN)
+		except ValueError, e:
+			message = "Failed to decode API response"
+			if hasattr(e, "message") and e.message.strip():
+				message += "( " + e.message.strip() + ")"
+
+			self._set_message(message)
+			self._exit(EXIT_UNKNOWN)
+		except Exception, e:
+			self._set_message("An unexpected error happened (" + str(type(e)) + ")")
+			self._exit(EXIT_UNKNOWN)
+
 
 # run the check
 if __name__ == "__main__":
